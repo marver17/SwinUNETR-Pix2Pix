@@ -1,0 +1,165 @@
+# Dataset configurations
+experiment_number: 7
+data:
+  basic_information : 
+    data_root: "/home/jovyan/work/data/CTMR/DATASET"
+    selected_dataset: ["OASIS3","AMY-MR","AMYFDGMR-MOV","Ginevra","MRADV-PT","FDGMR-FTD"]
+    testing_selected_dataset : ["RF","SynthRAD2023"]
+    train_validation_split:
+      enable: true
+      ratio: 0.9
+      shuffle: true
+      seed: 42
+  
+  train:
+    cacheDataset_num_workers: 8
+    cache_rate: 0.01
+    dataLoader_num_workers: 12
+    batch_size: 1
+    shuffle: true
+    transform:
+      resize:
+        enable: true
+        size: [193, 193, 229]  # target size [x, y, z]
+        mode: "trilinear"      # interpolation mode: nearest, linear, bilinear, bicubic, trilinear, area
+      normalize:
+        enable: false
+        keys : [A,B]
+        subtrahend: None
+        divisor: None
+      scaleintensity:
+        enable: true
+        min: 0.0
+        max: 1.0
+        windowing :
+          enable: false
+          windows : brain
+      #### mrct transformation
+      fix_pose:
+        enable: false
+      uniformize_dimension:
+        enable: false
+      #####random transformaion
+      random_intensity:
+        enable: false
+        probability: 0.3
+        factor_range: [0.9, 1.1]    
+      random_flip:
+        enable: false
+        probability: 0.5
+        axes: [0, 1]  # Flip along x and y axes
+      random_rotate:
+        enable: False
+        probability: 0.5
+        angle_range: [-10, 10]  # Rotation range in degrees
+      random_crop:
+        enable: true
+        size: [128,128,128]  #output size after cropping
+  validation:
+    batch_size: 1
+    num_workers: 3
+    shuffle: false
+    transform:
+      resize:
+        enable: true
+        size: [193, 193, 229]  # target size [x, y, z]
+        mode: "trilinear"      # interpolation mode: nearest, linear, bilinear, bicubic, trilinear, area
+      normalize:
+        enable: false
+        keys : [A,B]
+        subtrahend: None
+        divisor: None
+      scaleintensity:
+        enable: true
+        min: 0.0
+        max: 1.0
+        windowing :
+          enable: false
+          windows : brain
+      fix_pose:
+        enable: false
+      uniformize_dimension:
+        enable: false
+
+      #####random transformaion
+      random_intensity:
+        enable: false
+        probability: 0.3
+        factor_range: [0.9, 1.1]    
+      random_flip:
+        enable: false
+        probability: 0.5
+        axes: [0, 1]  # Flip along x and y axes
+      random_rotate:
+        enable: False
+        probability: 0.5
+        angle_range: [-10, 10]  # Rotation range in degrees
+      random_crop:
+        enable: false
+        size: [128,128,128]  #output size after cropping
+# Model configurations
+model:
+  generator: 
+    # the number of channels in input images
+    input_nc: 1
+    # the number of channels in output images
+    output_nc: 1
+    # the number of filters in the last conv layer
+    ngf: 64
+    # the architecture's name:  | unet_256 | unet_128 | swinunetr_128
+    netG: "swinunetr_128"
+    # the name of normalization layers used in the network: batch | instance | none
+    norm: "instance"
+    ## use dropout for the generator
+    use_dropout: True
+    ###name of initialization method
+    init_type: "normal"
+    ## scaling factor for normal, xavier and orthogonal initialization
+    init_gain: 0.02
+
+    #gpu_ids 
+  discriminator:
+    # the number of channels in input images (real+generated concatenated)
+    input_nc: 2  
+    # the number of filters in the first conv layer
+    ndf: 64
+    # the architecture's name: basic | n_layers | pixel
+    netD: "n_layers"
+    # number of conv layers in the discriminator (used if netD=n_layers)
+    n_layers_D: 2
+    # the name of normalization layers: batch | instance | spectral | none
+    norm: "instance"
+    # name of initialization method
+    init_type: "normal"
+    # scaling factor for normal, xavier and orthogonal initialization
+    init_gain: 0.02
+
+# Training configurations
+training:
+  lambda_gp: 10.0 # Peso per la gradient penalty (usato solo se gan_mode è 'wgan-gp')
+  epochs: 100
+  direction: "MRtoCT"  # CTtoMR or MRtoCT
+  optimizer:
+    learning_rate: 0.0002
+    b1: 0.5
+    b2: 0.999
+#  scheduler:
+#    type: "ReduceLROnPlateau"
+#    patience: 10    TODO  aggiungere possibilità di selezionare parametri dello scheduler 
+#    factor: 0.5
+  losses : 
+    lambda_L1: 10
+    lambda_perceptual: 0
+    lambda_structural: 0
+    gan_mode: "gan" # Tipi di GAN loss: 'lsgan', 'gan' (BCEWithLogits), 'wgan-gp', 'hinge'
+
+# Logging and checkpoint configurations
+logging:
+  save_dir: "lightning_logs"
+  log_interval: 100
+  save_interval: 5
+testing: 
+  saving_direction: "lightning_logs"
+  save_image: 
+    enable: True
+    modalities: ["mr","ct","synth"]
